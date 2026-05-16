@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 import '../../shared/section_header.dart';
 import '../../shared/album_card.dart';
-import '../../shared/playlist_row.dart';
 import '../../theme/app_colors.dart';
+import '../library/song_provider.dart';
+import '../player/player_provider.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final songState = ref.watch(songProvider);
+    final playerNotifier = ref.read(playerProvider.notifier);
+
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -75,10 +81,16 @@ class HomeScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              const SectionHeader(title: 'Recently Played', actionText: 'See all'),
-              const PlaylistRow(title: 'Midnight Dreams', subtitle: 'Arctic Coast'),
-              const PlaylistRow(title: 'The Night Drive', subtitle: 'Wave Theory'),
-              const PlaylistRow(title: 'Neon Skyline', subtitle: 'Lone Reverie'),
+              const SectionHeader(title: 'Local Tracks', actionText: 'See all'),
+              
+              if (songState.isLoading)
+                const Center(child: Padding(padding: EdgeInsets.all(32.0), child: CircularProgressIndicator()))
+              else if (!songState.hasPermission)
+                _buildPermissionState(context, ref)
+              else if (songState.songs.isEmpty)
+                _buildEmptyState(context)
+              else
+                ...songState.songs.take(5).map((song) => _buildSongRow(context, song, playerNotifier)),
               
               const SizedBox(height: 16),
               const SectionHeader(title: 'Made for You', actionText: 'See all'),
@@ -98,6 +110,75 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPermissionState(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Column(
+        children: [
+          const Icon(Icons.folder_off_rounded, size: 64, color: Colors.white54),
+          const SizedBox(height: 16),
+          Text('Storage Permission Required', style: Theme.of(context).textTheme.titleMedium, textAlign: TextAlign.center),
+          const SizedBox(height: 8),
+          Text('We need permission to scan your local music.', style: Theme.of(context).textTheme.bodyMedium, textAlign: TextAlign.center),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => ref.read(songProvider.notifier).requestPermissions(),
+            child: const Text('Grant Permission'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(32.0),
+      child: Center(
+        child: Column(
+          children: [
+            const Icon(Icons.music_off_rounded, size: 64, color: Colors.white54),
+            const SizedBox(height: 16),
+            Text('No Local Music Found', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text('Download some songs to get started.', style: Theme.of(context).textTheme.bodyMedium),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSongRow(BuildContext context, SongModel song, PlayerNotifier playerNotifier) {
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+      leading: QueryArtworkWidget(
+        id: song.id,
+        type: ArtworkType.AUDIO,
+        nullArtworkWidget: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            gradient: const LinearGradient(
+              colors: [AppColors.primary, AppColors.secondary],
+            ),
+          ),
+          child: const Icon(Icons.music_note, color: Colors.white),
+        ),
+        artworkBorder: BorderRadius.circular(8),
+      ),
+      title: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium),
+      subtitle: Text(song.artist ?? 'Unknown Artist', maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodyMedium),
+      trailing: const Icon(Icons.more_vert, color: AppColors.textSecondary),
+      onTap: () {
+        playerNotifier.loadSong(song);
+      },
     );
   }
 }

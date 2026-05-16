@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 
 class PlayerState {
   final bool isPlaying;
@@ -7,6 +8,7 @@ class PlayerState {
   final Duration totalDuration;
   final bool isShuffle;
   final bool isRepeat;
+  final SongModel? currentSong;
 
   PlayerState({
     this.isPlaying = false,
@@ -14,6 +16,7 @@ class PlayerState {
     this.totalDuration = const Duration(minutes: 3, seconds: 49),
     this.isShuffle = false,
     this.isRepeat = false,
+    this.currentSong,
   });
 
   PlayerState copyWith({
@@ -22,6 +25,7 @@ class PlayerState {
     Duration? totalDuration,
     bool? isShuffle,
     bool? isRepeat,
+    SongModel? currentSong,
   }) {
     return PlayerState(
       isPlaying: isPlaying ?? this.isPlaying,
@@ -29,6 +33,7 @@ class PlayerState {
       totalDuration: totalDuration ?? this.totalDuration,
       isShuffle: isShuffle ?? this.isShuffle,
       isRepeat: isRepeat ?? this.isRepeat,
+      currentSong: currentSong ?? this.currentSong,
     );
   }
 }
@@ -37,6 +42,16 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   PlayerNotifier() : super(PlayerState());
   
   Timer? _timer;
+
+  void loadSong(SongModel song) {
+    state = state.copyWith(
+      currentSong: song,
+      totalDuration: Duration(milliseconds: song.duration ?? 0),
+      currentPosition: Duration.zero,
+      isPlaying: true,
+    );
+    _startTimer();
+  }
 
   void togglePlay() {
     state = state.copyWith(isPlaying: !state.isPlaying);
@@ -91,3 +106,4 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 final playerProvider = StateNotifierProvider<PlayerNotifier, PlayerState>((ref) {
   return PlayerNotifier();
 });
+

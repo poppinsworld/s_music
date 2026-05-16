@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:on_audio_query/on_audio_query.dart';
 import '../../theme/app_colors.dart';
 import 'player_provider.dart';
 
@@ -57,11 +58,13 @@ class PlayerScreen extends ConsumerWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Neon Nights', 
+                          playerState.currentSong?.album ?? 'Unknown Album', 
                           style: Theme.of(context).textTheme.titleSmall?.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
-                          )
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
@@ -113,9 +116,21 @@ class PlayerScreen extends ConsumerWidget {
                       width: 1.0,
                     ),
                   ),
-                  child: const Center(
-                    child: Icon(Icons.music_note_rounded, size: 100, color: Colors.white54),
-                  ),
+                  child: playerState.currentSong != null
+                      ? QueryArtworkWidget(
+                          id: playerState.currentSong!.id,
+                          type: ArtworkType.AUDIO,
+                          artworkBorder: BorderRadius.circular(32),
+                          artworkWidth: double.infinity,
+                          artworkHeight: double.infinity,
+                          artworkFit: BoxFit.cover,
+                          nullArtworkWidget: const Center(
+                            child: Icon(Icons.music_note_rounded, size: 100, color: Colors.white54),
+                          ),
+                        )
+                      : const Center(
+                          child: Icon(Icons.music_note_rounded, size: 100, color: Colors.white54),
+                        ),
                 ),
               ),
               const Spacer(),
@@ -130,7 +145,7 @@ class PlayerScreen extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Midnight Dreams', 
+                            playerState.currentSong?.title ?? 'No Song Selected', 
                             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w800,
@@ -141,7 +156,7 @@ class PlayerScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'Arctic Coast', 
+                            playerState.currentSong?.artist ?? 'Unknown Artist', 
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               color: AppColors.primary.withOpacity(0.85),
                               fontWeight: FontWeight.w500,
