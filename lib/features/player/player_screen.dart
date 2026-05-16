@@ -1,12 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_colors.dart';
+import 'player_provider.dart';
 
-class PlayerScreen extends StatelessWidget {
+class PlayerScreen extends ConsumerWidget {
   const PlayerScreen({super.key});
 
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return '$minutes:$seconds';
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playerState = ref.watch(playerProvider);
+    final notifier = ref.read(playerProvider.notifier);
+
+    final progressValue = playerState.totalDuration.inSeconds > 0 
+        ? playerState.currentPosition.inSeconds / playerState.totalDuration.inSeconds 
+        : 0.0;
+
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -75,9 +91,9 @@ class PlayerScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withOpacity(0.3),
-                        blurRadius: 80,
-                        spreadRadius: 5,
+                        color: AppColors.primary.withOpacity(playerState.isPlaying ? 0.4 : 0.2),
+                        blurRadius: playerState.isPlaying ? 100 : 60,
+                        spreadRadius: playerState.isPlaying ? 10 : 0,
                         offset: const Offset(0, 20),
                       ),
                       BoxShadow(
@@ -159,7 +175,13 @@ class PlayerScreen extends StatelessWidget {
                         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
                         overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
                       ),
-                      child: Slider(value: 0.3, onChanged: (v) {}),
+                      child: Slider(
+                        value: progressValue.clamp(0.0, 1.0), 
+                        onChanged: (v) {
+                          final newPosition = Duration(seconds: (v * playerState.totalDuration.inSeconds).round());
+                          notifier.seek(newPosition);
+                        },
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -167,14 +189,14 @@ class PlayerScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            '1:27', 
+                            _formatDuration(playerState.currentPosition), 
                             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                               color: Colors.white54,
                               fontWeight: FontWeight.w600,
                             )
                           ),
                           Text(
-                            '3:49', 
+                            _formatDuration(playerState.totalDuration), 
                             style: Theme.of(context).textTheme.labelMedium?.copyWith(
                               color: Colors.white54,
                               fontWeight: FontWeight.w600,
@@ -194,41 +216,64 @@ class PlayerScreen extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.shuffle_rounded, color: Colors.white54, size: 28), 
-                      onPressed: () {},
+                      icon: Icon(
+                        Icons.shuffle_rounded, 
+                        color: playerState.isShuffle ? AppColors.primary : Colors.white54, 
+                        size: 28
+                      ), 
+                      onPressed: () => notifier.toggleShuffle(),
                     ),
                     IconButton(
                       icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 42), 
-                      onPressed: () {},
+                      onPressed: () => notifier.skipPrevious(),
                     ),
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: const LinearGradient(
-                          colors: [AppColors.primary, AppColors.secondary],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.4),
-                            blurRadius: 24,
-                            spreadRadius: 2,
-                            offset: const Offset(0, 8),
+                    GestureDetector(
+                      onTap: () => notifier.togglePlay(),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(
+                            colors: [AppColors.primary, AppColors.secondary],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                        ],
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withOpacity(playerState.isPlaying ? 0.6 : 0.3),
+                              blurRadius: playerState.isPlaying ? 32 : 16,
+                              spreadRadius: playerState.isPlaying ? 4 : 0,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          transitionBuilder: (child, animation) {
+                            return ScaleTransition(scale: animation, child: child);
+                          },
+                          child: Icon(
+                            playerState.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, 
+                            key: ValueKey(playerState.isPlaying),
+                            color: Colors.white, 
+                            size: 40
+                          ),
+                        ),
                       ),
-                      child: const Icon(Icons.pause_rounded, color: Colors.white, size: 40),
                     ),
                     IconButton(
                       icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 42), 
-                      onPressed: () {},
+                      onPressed: () => notifier.skipNext(),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.repeat_rounded, color: Colors.white54, size: 28), 
-                      onPressed: () {},
+                      icon: Icon(
+                        Icons.repeat_rounded, 
+                        color: playerState.isRepeat ? AppColors.primary : Colors.white54, 
+                        size: 28
+                      ), 
+                      onPressed: () => notifier.toggleRepeat(),
                     ),
                   ],
                 ),

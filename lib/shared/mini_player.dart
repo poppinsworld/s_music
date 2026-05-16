@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../features/player/player_provider.dart';
 import '../theme/app_colors.dart';
 import 'glass_container.dart';
 
-class MiniPlayer extends StatelessWidget {
+class MiniPlayer extends ConsumerWidget {
   const MiniPlayer({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final playerState = ref.watch(playerProvider);
+    final notifier = ref.read(playerProvider.notifier);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8.0),
       child: GlassContainer(
@@ -41,8 +46,18 @@ class MiniPlayer extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(Icons.pause, color: Colors.white),
-              onPressed: () {},
+              icon: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (child, animation) {
+                  return ScaleTransition(scale: animation, child: child);
+                },
+                child: Icon(
+                  playerState.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  key: ValueKey(playerState.isPlaying),
+                  color: Colors.white,
+                ),
+              ),
+              onPressed: () => notifier.togglePlay(),
             ),
           ],
         ),
