@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:on_audio_query/on_audio_query.dart';
+import 'package:go_router/go_router.dart';
 import '../../shared/section_header.dart';
 import '../../shared/album_card.dart';
+import '../../shared/song_tile.dart';
 import '../../theme/app_colors.dart';
 import '../library/song_provider.dart';
-import '../player/player_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -13,7 +13,6 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final songState = ref.watch(songProvider);
-    final playerNotifier = ref.read(playerProvider.notifier);
 
     return Scaffold(
       body: SafeArea(
@@ -81,7 +80,11 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              const SectionHeader(title: 'Local Tracks', actionText: 'See all'),
+              SectionHeader(
+                title: 'Local Tracks',
+                actionText: 'See all',
+                onAction: () => context.push('/songs'),
+              ),
               
               if (songState.isLoading)
                 const Center(child: Padding(padding: EdgeInsets.all(32.0), child: CircularProgressIndicator()))
@@ -90,7 +93,10 @@ class HomeScreen extends ConsumerWidget {
               else if (songState.songs.isEmpty)
                 _buildEmptyState(context)
               else
-                ...songState.songs.take(5).map((song) => _buildSongRow(context, song, playerNotifier)),
+                ...songState.songs.take(5).map((song) => SongTile(
+                      song: song,
+                      queue: songState.songs,
+                    )),
               
               const SizedBox(height: 16),
               const SectionHeader(title: 'Made for You', actionText: 'See all'),
@@ -151,34 +157,6 @@ class HomeScreen extends ConsumerWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSongRow(BuildContext context, SongModel song, PlayerNotifier playerNotifier) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-      leading: QueryArtworkWidget(
-        id: song.id,
-        type: ArtworkType.AUDIO,
-        nullArtworkWidget: Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            gradient: const LinearGradient(
-              colors: [AppColors.primary, AppColors.secondary],
-            ),
-          ),
-          child: const Icon(Icons.music_note, color: Colors.white),
-        ),
-        artworkBorder: BorderRadius.circular(8),
-      ),
-      title: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleMedium),
-      subtitle: Text(song.artist ?? 'Unknown Artist', maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.bodyMedium),
-      trailing: const Icon(Icons.more_vert, color: AppColors.textSecondary),
-      onTap: () {
-        playerNotifier.loadSong(song);
-      },
     );
   }
 }

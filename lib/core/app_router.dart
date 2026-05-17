@@ -3,6 +3,7 @@ import '../features/splash/splash_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/player/player_screen.dart';
 import '../features/library/library_screen.dart';
+import '../features/library/songs_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../shared/bottom_nav_shell.dart';
@@ -38,6 +39,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/player',
       builder: (context, state) => const PlayerScreen(),
+    ),
+    GoRoute(
+      path: '/songs',
+      builder: (context, state) => const SongsScreen(),
     ),
   ],
 );

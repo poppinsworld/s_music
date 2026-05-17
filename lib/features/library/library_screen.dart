@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../theme/app_colors.dart';
 import '../../shared/playlist_row.dart';
+import 'song_provider.dart';
 
-class LibraryScreen extends StatelessWidget {
+class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final songState = ref.watch(songProvider);
+    final songCount = songState.isLoading ? '...' : songState.songs.length.toString();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Library', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
@@ -19,12 +25,18 @@ class LibraryScreen extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 140),
         child: Column(
           children: [
-            _buildLibraryItem(context, Icons.music_note, 'Songs', '1284'),
-            _buildLibraryItem(context, Icons.album, 'Albums', '96'),
-            _buildLibraryItem(context, Icons.person, 'Artists', '74'),
-            _buildLibraryItem(context, Icons.playlist_play, 'Playlists', '42'),
-            _buildLibraryItem(context, Icons.category, 'Genres', '18'),
-            _buildLibraryItem(context, Icons.favorite, 'Liked Songs', '312', isLiked: true),
+            _buildLibraryItem(
+              context,
+              Icons.music_note,
+              'Songs',
+              songCount,
+              onTap: () => context.push('/songs'),
+            ),
+            _buildLibraryItem(context, Icons.album, 'Albums', '0'),
+            _buildLibraryItem(context, Icons.person, 'Artists', '0'),
+            _buildLibraryItem(context, Icons.playlist_play, 'Playlists', '0'),
+            _buildLibraryItem(context, Icons.category, 'Genres', '0'),
+            _buildLibraryItem(context, Icons.favorite, 'Liked Songs', '0', isLiked: true),
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -37,16 +49,33 @@ class LibraryScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            const PlaylistRow(title: 'Glow', subtitle: 'Osho Jain'),
-            const PlaylistRow(title: 'Eclipse', subtitle: 'Luna Wave'),
-            const PlaylistRow(title: 'Infinity', subtitle: 'Point Break'),
+            if (songState.songs.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  'No local songs available yet.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+                ),
+              )
+            else
+              ...songState.songs.take(3).map((song) => PlaylistRow(
+                    title: song.title,
+                    subtitle: song.artist ?? 'Unknown Artist',
+                  )),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildLibraryItem(BuildContext context, IconData icon, String title, String count, {bool isLiked = false}) {
+  Widget _buildLibraryItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String count, {
+    bool isLiked = false,
+    VoidCallback? onTap,
+  }) {
     return ListTile(
       leading: Icon(icon, color: isLiked ? AppColors.secondary : AppColors.primary),
       title: Text(title, style: Theme.of(context).textTheme.titleMedium),
@@ -58,7 +87,7 @@ class LibraryScreen extends StatelessWidget {
           const Icon(Icons.chevron_right, color: AppColors.textSecondary),
         ],
       ),
-      onTap: () {},
+      onTap: onTap,
     );
   }
 }
