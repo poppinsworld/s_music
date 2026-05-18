@@ -5,6 +5,7 @@ import 'package:on_audio_query/on_audio_query.dart';
 import '../features/player/player_provider.dart';
 import '../features/theme/app_colors.dart';
 import 'add_to_playlist_sheet.dart';
+import 'song_options_sheet.dart';
 import 'favorite_button.dart';
 
 class SongTile extends ConsumerWidget {
@@ -38,7 +39,7 @@ class SongTile extends ConsumerWidget {
           ref.read(playerProvider.notifier).loadSong(song, queue);
         },
         onLongPress: () {
-          showAddToPlaylistSheet(context, song);
+          showSongOptionsSheet(context, song);
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(

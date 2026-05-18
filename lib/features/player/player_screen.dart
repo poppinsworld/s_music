@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../../shared/up_next_sheet.dart';
+import '../../shared/song_options_sheet.dart';
+import '../queue/queue_sheet.dart';
 import '../../shared/favorite_button.dart';
 import '../../shared/add_to_playlist_sheet.dart';
 import '../theme/app_colors.dart';
@@ -29,7 +30,7 @@ class PlayerScreen extends ConsumerWidget {
     final currentSong   = ref.watch(playerProvider.select((s) => s.currentSong));
     final isPlaying     = ref.watch(playerProvider.select((s) => s.isPlaying));
     final isShuffle     = ref.watch(playerProvider.select((s) => s.isShuffle));
-    final isRepeat      = ref.watch(playerProvider.select((s) => s.isRepeat));
+    final repeatMode    = ref.watch(playerProvider.select((s) => s.repeatMode));
     // Position state — rebuilds on every tick, but only reaches the slider
     final position      = ref.watch(playerProvider.select((s) => s.currentPosition));
     final total         = ref.watch(playerProvider.select((s) => s.totalDuration));
@@ -264,8 +265,8 @@ class PlayerScreen extends ConsumerWidget {
                       onPressed: () => notifier.skipNext(),
                     ),
                      IconButton(
-                       icon: Icon(Icons.repeat_rounded,
-                           color: isRepeat ? dynTheme.glowColor : Colors.white54, size: 28),
+                       icon: Icon(repeatMode == RepeatMode.one ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+                           color: repeatMode != RepeatMode.off ? dynTheme.glowColor : Colors.white54, size: 28),
                        onPressed: () => notifier.toggleRepeat(),
                      ),
                   ],
@@ -274,7 +275,7 @@ class PlayerScreen extends ConsumerWidget {
               const SizedBox(height: 20),
               // ── Up Next button ────────────────────────────────────────────
               TextButton.icon(
-                onPressed: () => showUpNextSheet(context),
+                onPressed: () => showQueueSheet(context),
                 style: TextButton.styleFrom(
                   foregroundColor: Colors.white54,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

@@ -1,14 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../features/player/player_provider.dart';
+import '../features/library/song_provider.dart';
 import '../features/theme/app_colors.dart';
 import 'mini_player.dart';
 
-class BottomNavShell extends StatelessWidget {
+class BottomNavShell extends ConsumerWidget {
   final Widget child;
   const BottomNavShell({super.key, required this.child});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen(songProvider, (previous, next) {
+      if (!next.isLoading && next.songs.isNotEmpty) {
+        ref.read(playerProvider.notifier).tryRestoreQueue(next.songs);
+      }
+    });
+
     int currentIndex = _calculateSelectedIndex(context);
 
     return Scaffold(
