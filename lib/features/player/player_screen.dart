@@ -11,6 +11,8 @@ import '../theme/dynamic_theme_provider.dart';
 import '../lyrics/lyrics_widget.dart';
 import '../equalizer/equalizer_sheet.dart';
 import 'player_provider.dart';
+import '../visualizer/widgets/visualizer_layer.dart';
+import '../visualizer/widgets/visualizer_sheet.dart';
 
 // ---------------------------------------------------------------------------
 // PlayerScreen — uses granular select() so position ticks do NOT rebuild
@@ -55,9 +57,14 @@ class PlayerScreen extends ConsumerWidget {
             stops: const [0.0, 0.7],
           ),
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: VisualizerLayer(isPlaying: isPlaying),
+            ),
+            SafeArea(
+              child: Column(
+                children: [
               // ── Top bar ───────────────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -93,6 +100,10 @@ class PlayerScreen extends ConsumerWidget {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        IconButton(
+                          icon: const Icon(Icons.waves_rounded, color: Colors.white),
+                          onPressed: () => showVisualizerSheet(context),
+                        ),
                         IconButton(
                           icon: const Icon(Icons.tune_rounded, color: Colors.white),
                           onPressed: () => showEqualizerSheet(context),
@@ -293,6 +304,8 @@ class PlayerScreen extends ConsumerWidget {
               const SizedBox(height: 28),
             ],
           ),
+        ),
+          ],
         ),
       ),
     );
