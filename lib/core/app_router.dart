@@ -6,6 +6,9 @@ import '../features/library/library_screen.dart';
 import '../features/library/songs_screen.dart';
 import '../features/search/search_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/favorites/favorites_screen.dart';
+import '../features/playlists/playlists_screen.dart';
+import '../features/playlists/playlist_details_screen.dart';
 import '../shared/bottom_nav_shell.dart';
 
 final appRouter = GoRouter(
@@ -43,6 +46,20 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/songs',
       builder: (context, state) => const SongsScreen(),
+    ),
+    GoRoute(
+      path: '/favorites',
+      builder: (context, state) => const FavoritesScreen(),
+    ),
+    GoRoute(
+      path: '/playlists',
+      builder: (context, state) => const PlaylistsScreen(),
+    ),
+    GoRoute(
+      path: '/playlists/:id',
+      builder: (context, state) => PlaylistDetailsScreen(
+        playlistId: state.pathParameters['id'] ?? '',
+      ),
     ),
   ],
 );

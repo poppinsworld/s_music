@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_colors.dart';
 import '../../shared/playlist_row.dart';
+import '../favorites/favorites_provider.dart';
+import '../playlists/playlist_provider.dart';
 import 'song_provider.dart';
 
 class LibraryScreen extends ConsumerWidget {
@@ -10,8 +12,10 @@ class LibraryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final songState = ref.watch(songProvider);
-    final songCount = songState.isLoading ? '...' : songState.songs.length.toString();
+    final songState     = ref.watch(songProvider);
+    final songCount      = songState.isLoading ? '...' : songState.songs.length.toString();
+    final favoriteCount  = ref.watch(favoritesProvider).length.toString();
+    final playlistsCount = ref.watch(playlistProvider).length.toString();
 
     return Scaffold(
       appBar: AppBar(
@@ -34,9 +38,11 @@ class LibraryScreen extends ConsumerWidget {
             ),
             _buildLibraryItem(context, Icons.album, 'Albums', '0'),
             _buildLibraryItem(context, Icons.person, 'Artists', '0'),
-            _buildLibraryItem(context, Icons.playlist_play, 'Playlists', '0'),
+            _buildLibraryItem(context, Icons.playlist_play, 'Playlists', playlistsCount,
+                onTap: () => context.push('/playlists')),
             _buildLibraryItem(context, Icons.category, 'Genres', '0'),
-            _buildLibraryItem(context, Icons.favorite, 'Liked Songs', '0', isLiked: true),
+            _buildLibraryItem(context, Icons.favorite, 'Liked Songs', favoriteCount,
+                isLiked: true, onTap: () => context.push('/favorites')),
             const SizedBox(height: 24),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),

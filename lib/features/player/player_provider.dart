@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:just_audio/just_audio.dart';
 
+// ---------------------------------------------------------------------------
+// PlayerState Model
+// ---------------------------------------------------------------------------
 class PlayerState {
   final bool isPlaying;
   final Duration currentPosition;
@@ -43,17 +48,24 @@ class PlayerState {
   }
 }
 
+// ---------------------------------------------------------------------------
+// PlayerNotifier
+// ---------------------------------------------------------------------------
 class PlayerNotifier extends StateNotifier<PlayerState> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final List<StreamSubscription> _subscriptions = [];
+  int _currentLoadSession = 0;
 
   PlayerNotifier() : super(PlayerState()) {
     _init();
   }
 
   void _init() {
+    debugPrint('[PlayerNotifier] Initializing clean local playback engine');
+
     // Sync playing state
     _subscriptions.add(_audioPlayer.playingStream.listen((playing) {
+      debugPrint('[PlayerNotifier] playingStream: $playing');
       state = state.copyWith(isPlaying: playing);
     }));
 
@@ -65,40 +77,160 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
     // Sync duration
     _subscriptions.add(_audioPlayer.durationStream.listen((duration) {
       if (duration != null) {
+        debugPrint('[PlayerNotifier] durationStream: $duration');
         state = state.copyWith(totalDuration: duration);
       }
     }));
 
-    // Sync processing state (e.g. for auto-next)
+    // Sync current index for automatic queue advancement
+    _subscriptions.add(_audioPlayer.currentIndexStream.listen((index) {
+      debugPrint('[PlayerNotifier] currentIndexStream: index=$index');
+      if (index != null && index >= 0 && index < state.queue.length) {
+        final song = state.queue[index];
+        if (state.currentSong?.id != song.id) {
+          debugPrint('[PlayerNotifier] Synced active song to: "${song.title}"');
+          state = state.copyWith(currentSong: song);
+        }
+      }
+    }));
+
+    // Handle auto-advance at the end of a track
     _subscriptions.add(_audioPlayer.playerStateStream.listen((playerState) {
       if (playerState.processingState == ProcessingState.completed) {
+        debugPrint('[PlayerNotifier] Track completed. Advancing queue...');
         skipNext();
       }
     }));
   }
 
-  Future<void> loadSong(SongModel song, List<SongModel> queue) async {
+  AudioSource? _buildSource(SongModel song) {
+    // Strategy 1: Direct absolute file path (100% robust for local storage)
+    if (song.data.isNotEmpty) {
+      try {
+        final file = File(song.data);
+        if (file.existsSync()) {
+          return AudioSource.uri(Uri.file(song.data));
+        }
+      } catch (e) {
+        debugPrint('[PlayerNotifier] File path check failed for "${song.title}": $e');
+      }
+    }
+
+    // Strategy 2: Fallback to content URI
+    if (song.uri != null && song.uri!.isNotEmpty) {
+      try {
+        final contentUri = Uri.parse(song.uri!);
+        return AudioSource.uri(contentUri);
+      } catch (e) {
+        debugPrint('[PlayerNotifier] Content URI parse failed for "${song.title}": $e');
+      }
+    }
+
+    debugPrint('[PlayerNotifier] ❌ Failed to build playable source for: "${song.title}"');
+    return null;
+  }
+
+  Future<void> loadSong(SongModel song, List<SongModel> queue, {bool forceFileUri = false}) async {
+    final sessionId = ++_currentLoadSession;
+    debugPrint('[PlayerNotifier] loadSong() sessionId=$sessionId, title="${song.title}"');
+
+    if (queue.isEmpty) {
+      debugPrint('[PlayerNotifier] Aborting loadSong: Queue is empty');
+      return;
+    }
+
+    // Optimize: if the new queue is identical to the current one, seek directly to target song index
+    if (_isSameQueue(queue) && _audioPlayer.audioSource != null) {
+      final targetIndex = state.queue.indexWhere((s) => s.id == song.id);
+      final finalIndex = targetIndex != -1 ? targetIndex : 0;
+      final currentIdx = _audioPlayer.currentIndex ?? -1;
+
+      debugPrint('[PlayerNotifier] Same queue active. currentIdx=$currentIdx, targetIdx=$finalIndex');
+
+      if (currentIdx == finalIndex) {
+        if (!_audioPlayer.playing) {
+          await _safePlay();
+        }
+        return;
+      }
+
+      await _audioPlayer.seek(Duration.zero, index: finalIndex);
+      await _safePlay();
+      return;
+    }
+
     try {
+      final sources = <AudioSource>[];
+      final validQueue = <SongModel>[];
+
+      for (final s in queue) {
+        final src = _buildSource(s);
+        if (src != null) {
+          sources.add(src);
+          validQueue.add(s);
+        }
+      }
+
+      if (sources.isEmpty) {
+        throw Exception('No playable local audio sources could be found on the device.');
+      }
+
+      if (sessionId != _currentLoadSession) return;
+
+      final targetIndex = validQueue.indexWhere((s) => s.id == song.id);
+      final finalIndex = targetIndex != -1 ? targetIndex : 0;
+
+      // Optimistically update Riverpod state so UI updates immediately
       state = state.copyWith(
-        currentSong: song,
-        queue: queue,
+        currentSong: validQueue[finalIndex],
+        queue: validQueue,
         currentPosition: Duration.zero,
+        totalDuration: Duration.zero,
       );
-      
-      await _audioPlayer.setFilePath(song.data);
-      _audioPlayer.play();
+
+      final playlist = ConcatenatingAudioSource(
+        useLazyPreparation: true,
+        children: sources,
+      );
+
+      await _audioPlayer.setAudioSource(
+        playlist,
+        initialIndex: finalIndex,
+        initialPosition: Duration.zero,
+      );
+
+      if (sessionId != _currentLoadSession) return;
+
+      await _safePlay();
     } catch (e) {
-      // Handle error (invalid file, etc)
+      if (sessionId != _currentLoadSession) return;
+      debugPrint('[PlayerNotifier] ❌ Playback loading failed: $e');
       state = state.copyWith(isPlaying: false);
     }
+  }
+
+  Future<void> _safePlay() async {
+    try {
+      await _audioPlayer.play();
+    } catch (e) {
+      debugPrint('[PlayerNotifier] play() error: $e');
+    }
+  }
+
+  bool _isSameQueue(List<SongModel> newQueue) {
+    if (state.queue.length != newQueue.length) return false;
+    for (int i = 0; i < newQueue.length; i++) {
+      if (state.queue[i].id != newQueue[i].id) return false;
+    }
+    return true;
   }
 
   void togglePlay() {
     if (_audioPlayer.playing) {
       _audioPlayer.pause();
     } else {
-      if (state.currentSong != null) {
-        _audioPlayer.play();
+      if (state.currentSong != null && _audioPlayer.audioSource != null) {
+        _safePlay();
       }
     }
   }
@@ -113,45 +245,47 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
   }
 
   void toggleShuffle() {
-    state = state.copyWith(isShuffle: !state.isShuffle);
-    // Note: just_audio has its own shuffle but we are doing it manually for now
-    // to keep it simple as per requirements.
+    final next = !state.isShuffle;
+    state = state.copyWith(isShuffle: next);
+    _audioPlayer.setShuffleModeEnabled(next);
   }
 
   void toggleRepeat() {
-    state = state.copyWith(isRepeat: !state.isRepeat);
-    _audioPlayer.setLoopMode(state.isRepeat ? LoopMode.one : LoopMode.off);
+    final next = !state.isRepeat;
+    state = state.copyWith(isRepeat: next);
+    _audioPlayer.setLoopMode(next ? LoopMode.one : LoopMode.off);
   }
 
   void skipNext() {
-    if (state.queue.isEmpty || state.currentSong == null) return;
-    
-    final currentIndex = state.queue.indexWhere((s) => s.id == state.currentSong!.id);
-    if (currentIndex != -1 && currentIndex < state.queue.length - 1) {
-      loadSong(state.queue[currentIndex + 1], state.queue);
-    } else if (state.isRepeat) {
-      loadSong(state.queue[0], state.queue);
+    if (state.queue.isEmpty || _audioPlayer.audioSource == null) return;
+
+    if (_audioPlayer.hasNext) {
+      _audioPlayer.seekToNext();
+    } else {
+      // Loop back to start
+      _audioPlayer.seek(Duration.zero, index: 0);
     }
   }
 
   void skipPrevious() {
-    if (state.queue.isEmpty || state.currentSong == null) return;
+    if (state.queue.isEmpty || _audioPlayer.audioSource == null) return;
 
-    // If we are more than 3 seconds into the song, restart it
     if (state.currentPosition.inSeconds > 3) {
       seek(Duration.zero);
       return;
     }
 
-    final currentIndex = state.queue.indexWhere((s) => s.id == state.currentSong!.id);
-    if (currentIndex > 0) {
-      loadSong(state.queue[currentIndex - 1], state.queue);
+    if (_audioPlayer.hasPrevious) {
+      _audioPlayer.seekToPrevious();
+    } else {
+      // Loop to end of queue
+      _audioPlayer.seek(Duration.zero, index: state.queue.length - 1);
     }
   }
 
   @override
   void dispose() {
-    for (var sub in _subscriptions) {
+    for (final sub in _subscriptions) {
       sub.cancel();
     }
     _audioPlayer.dispose();
@@ -162,4 +296,3 @@ class PlayerNotifier extends StateNotifier<PlayerState> {
 final playerProvider = StateNotifierProvider<PlayerNotifier, PlayerState>((ref) {
   return PlayerNotifier();
 });
-

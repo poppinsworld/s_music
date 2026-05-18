@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../features/player/player_provider.dart';
 import '../theme/app_colors.dart';
+import 'add_to_playlist_sheet.dart';
+import 'favorite_button.dart';
 
 class SongTile extends ConsumerWidget {
   final SongModel song;
@@ -34,6 +36,9 @@ class SongTile extends ConsumerWidget {
       child: InkWell(
         onTap: () {
           ref.read(playerProvider.notifier).loadSong(song, queue);
+        },
+        onLongPress: () {
+          showAddToPlaylistSheet(context, song);
         },
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -150,6 +155,8 @@ class SongTile extends ConsumerWidget {
                           fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
                         ),
                   ),
+                  const SizedBox(width: 12),
+                  FavoriteButton(songId: song.id, size: 18),
                 ],
               ),
             ],

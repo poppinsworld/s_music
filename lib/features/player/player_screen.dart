@@ -4,7 +4,11 @@ import 'package:go_router/go_router.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../theme/app_colors.dart';
 import '../../shared/up_next_sheet.dart';
+import '../../shared/favorite_button.dart';
+import '../../shared/add_to_playlist_sheet.dart';
+import 'dynamic_theme_provider.dart';
 import 'player_provider.dart';
+import 'lyrics_widget.dart';
 
 // ---------------------------------------------------------------------------
 // PlayerScreen — uses granular select() so position ticks do NOT rebuild
@@ -28,6 +32,8 @@ class PlayerScreen extends ConsumerWidget {
     // Position state — rebuilds on every tick, but only reaches the slider
     final position      = ref.watch(playerProvider.select((s) => s.currentPosition));
     final total         = ref.watch(playerProvider.select((s) => s.totalDuration));
+    // Dynamic theme — rebuilds only when song changes (palette extraction)
+    final dynTheme      = ref.watch(dynamicThemeProvider);
 
     final notifier = ref.read(playerProvider.notifier);
     final progressValue = total.inSeconds > 0
@@ -35,13 +41,16 @@ class PlayerScreen extends ConsumerWidget {
         : 0.0;
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
+      body: AnimatedContainer(
+        // Smooth 700ms color transition when song changes
+        duration: const Duration(milliseconds: 700),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF1A0B2E), Colors.black],
+            colors: [dynTheme.backgroundStart, dynTheme.backgroundEnd],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            stops: [0.0, 0.7],
+            stops: const [0.0, 0.7],
           ),
         ),
         child: SafeArea(
@@ -81,17 +90,22 @@ class PlayerScreen extends ConsumerWidget {
                     ),
                     IconButton(
                       icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
-                      onPressed: () {},
+                      onPressed: () {
+                        if (currentSong != null) {
+                          showAddToPlaylistSheet(context, currentSong);
+                        }
+                      },
                     ),
                   ],
                 ),
               ),
               const Spacer(),
-              // ── Album artwork (completely isolated from position ticks) ───
-              PremiumAlbumArtwork(
-                key: ValueKey(currentSong?.id ?? 0),
+              // ── Album artwork or Lyrics ───────────────────────────────────
+              ArtworkLyricsSwitcher(
                 currentSong: currentSong,
                 isPlaying: isPlaying,
+                glowColor: dynTheme.glowColor,
+                accentColor: dynTheme.accentColor,
               ),
               const Spacer(),
               // ── Song info ─────────────────────────────────────────────────
@@ -129,10 +143,12 @@ class PlayerScreen extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    IconButton(
-                      icon: const Icon(Icons.favorite_rounded, color: AppColors.primary, size: 32),
-                      onPressed: () {},
-                    ),
+                    if (currentSong != null)
+                      FavoriteButton(
+                        songId: currentSong.id,
+                        size: 32,
+                        activeColor: dynTheme.glowColor,
+                      ),
                   ],
                 ),
               ),
@@ -144,9 +160,9 @@ class PlayerScreen extends ConsumerWidget {
                   children: [
                     SliderTheme(
                       data: SliderTheme.of(context).copyWith(
-                        activeTrackColor: Colors.white,
+                        activeTrackColor: dynTheme.glowColor,
                         inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
-                        thumbColor: Colors.white,
+                        thumbColor: dynTheme.glowColor,
                         trackHeight: 3,
                         thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
                         overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
@@ -189,11 +205,11 @@ class PlayerScreen extends ConsumerWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
-                      icon: Icon(Icons.shuffle_rounded,
-                          color: isShuffle ? AppColors.primary : Colors.white54, size: 28),
-                      onPressed: () => notifier.toggleShuffle(),
-                    ),
+                     IconButton(
+                       icon: Icon(Icons.shuffle_rounded,
+                           color: isShuffle ? dynTheme.glowColor : Colors.white54, size: 28),
+                       onPressed: () => notifier.toggleShuffle(),
+                     ),
                     IconButton(
                       icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 42),
                       onPressed: () => notifier.skipPrevious(),
@@ -206,14 +222,14 @@ class PlayerScreen extends ConsumerWidget {
                         height: 80,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [AppColors.primary, AppColors.secondary],
+                          gradient: LinearGradient(
+                            colors: [dynTheme.glowColor, dynTheme.accentColor],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.primary.withValues(alpha: isPlaying ? 0.6 : 0.3),
+                              color: dynTheme.glowColor.withValues(alpha: isPlaying ? 0.55 : 0.25),
                               blurRadius: isPlaying ? 32 : 16,
                               spreadRadius: isPlaying ? 4 : 0,
                               offset: const Offset(0, 8),
@@ -237,11 +253,11 @@ class PlayerScreen extends ConsumerWidget {
                       icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 42),
                       onPressed: () => notifier.skipNext(),
                     ),
-                    IconButton(
-                      icon: Icon(Icons.repeat_rounded,
-                          color: isRepeat ? AppColors.primary : Colors.white54, size: 28),
-                      onPressed: () => notifier.toggleRepeat(),
-                    ),
+                     IconButton(
+                       icon: Icon(Icons.repeat_rounded,
+                           color: isRepeat ? dynTheme.glowColor : Colors.white54, size: 28),
+                       onPressed: () => notifier.toggleRepeat(),
+                     ),
                   ],
                 ),
               ),
@@ -288,11 +304,17 @@ class PlayerScreen extends ConsumerWidget {
 class PremiumAlbumArtwork extends StatefulWidget {
   final SongModel? currentSong;
   final bool isPlaying;
+  /// Dynamic glow color derived from album artwork palette
+  final Color glowColor;
+  /// Dynamic accent color (complement) derived from album artwork palette
+  final Color accentColor;
 
   const PremiumAlbumArtwork({
     super.key,
     required this.currentSong,
     required this.isPlaying,
+    this.glowColor = AppColors.primary,
+    this.accentColor = AppColors.secondary,
   });
 
   @override
@@ -390,8 +412,8 @@ class _PremiumAlbumArtworkState extends State<PremiumAlbumArtwork>
           height: size,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(32),
-            gradient: const LinearGradient(
-              colors: [AppColors.secondary, AppColors.primary],
+            gradient: LinearGradient(
+              colors: [widget.accentColor, widget.glowColor],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -400,23 +422,23 @@ class _PremiumAlbumArtworkState extends State<PremiumAlbumArtwork>
               width: 1.0,
             ),
             boxShadow: [
-              // Wide atmospheric halo (bottom)
+              // Wide atmospheric halo (bottom) — dynamic color
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: haloAlpha),
+                color: widget.glowColor.withValues(alpha: haloAlpha),
                 blurRadius: haloBlur,
                 spreadRadius: haloSpread,
                 offset: const Offset(0, 20),
               ),
-              // Tight neon edge / corner glow
+              // Tight neon edge / corner glow — dynamic color
               BoxShadow(
-                color: AppColors.primary.withValues(alpha: coreAlpha),
+                color: widget.glowColor.withValues(alpha: coreAlpha),
                 blurRadius: coreBlur,
                 spreadRadius: coreSpread,
                 offset: const Offset(0, 4),
               ),
-              // Top accent (pink chroma)
+              // Top accent (chroma complement) — dynamic color
               BoxShadow(
-                color: AppColors.secondary.withValues(alpha: topAlpha),
+                color: widget.accentColor.withValues(alpha: topAlpha),
                 blurRadius: topBlur,
                 spreadRadius: topSpread,
                 offset: const Offset(0, -6),
@@ -453,3 +475,118 @@ class _Fallback extends StatelessWidget {
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// ArtworkLyricsSwitcher
+// Toggles smoothly between the Album Artwork and the Synchronized Lyrics
+// ---------------------------------------------------------------------------
+class ArtworkLyricsSwitcher extends StatefulWidget {
+  final SongModel? currentSong;
+  final bool isPlaying;
+  final Color glowColor;
+  final Color accentColor;
+
+  const ArtworkLyricsSwitcher({
+    super.key,
+    required this.currentSong,
+    required this.isPlaying,
+    required this.glowColor,
+    required this.accentColor,
+  });
+
+  @override
+  State<ArtworkLyricsSwitcher> createState() => _ArtworkLyricsSwitcherState();
+}
+
+class _ArtworkLyricsSwitcherState extends State<ArtworkLyricsSwitcher> {
+  bool _showLyrics = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size.width * 0.85;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _showLyrics = !_showLyrics;
+            });
+          },
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              return FadeTransition(
+                opacity: animation,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.95, end: 1.0).animate(animation),
+                  child: child,
+                ),
+              );
+            },
+            child: _showLyrics
+                ? SizedBox(
+                    key: const ValueKey('lyrics'),
+                    height: size,
+                    width: size,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          width: 1.0,
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(32),
+                        child: LyricsWidget(
+                          glowColor: widget.glowColor,
+                          accentColor: widget.accentColor,
+                        ),
+                      ),
+                    ),
+                  )
+                : PremiumAlbumArtwork(
+                    key: ValueKey(widget.currentSong?.id ?? 0),
+                    currentSong: widget.currentSong,
+                    isPlaying: widget.isPlaying,
+                    glowColor: widget.glowColor,
+                    accentColor: widget.accentColor,
+                  ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        // Indicator dots for Artwork / Lyrics
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: _showLyrics ? 6 : 20,
+              height: 4,
+              decoration: BoxDecoration(
+                color: _showLyrics ? Colors.white.withValues(alpha: 0.3) : widget.glowColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(width: 8),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: _showLyrics ? 20 : 6,
+              height: 4,
+              decoration: BoxDecoration(
+                color: _showLyrics ? widget.glowColor : Colors.white.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
