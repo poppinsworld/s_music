@@ -8,6 +8,7 @@ import '../../shared/add_to_playlist_sheet.dart';
 import '../theme/app_colors.dart';
 import '../theme/dynamic_theme_provider.dart';
 import '../lyrics/lyrics_widget.dart';
+import '../equalizer/equalizer_sheet.dart';
 import 'player_provider.dart';
 
 // ---------------------------------------------------------------------------
@@ -88,13 +89,22 @@ class PlayerScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
-                      onPressed: () {
-                        if (currentSong != null) {
-                          showAddToPlaylistSheet(context, currentSong);
-                        }
-                      },
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.tune_rounded, color: Colors.white),
+                          onPressed: () => showEqualizerSheet(context),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+                          onPressed: () {
+                            if (currentSong != null) {
+                              showAddToPlaylistSheet(context, currentSong);
+                            }
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),

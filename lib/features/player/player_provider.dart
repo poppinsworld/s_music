@@ -52,11 +52,23 @@ class PlayerState {
 // PlayerNotifier
 // ---------------------------------------------------------------------------
 class PlayerNotifier extends StateNotifier<PlayerState> {
-  final AudioPlayer _audioPlayer = AudioPlayer();
+  late final AndroidEqualizer androidEqualizer;
+  late final AndroidLoudnessEnhancer androidLoudnessEnhancer;
+  late final AudioPlayer _audioPlayer;
   final List<StreamSubscription> _subscriptions = [];
   int _currentLoadSession = 0;
 
   PlayerNotifier() : super(PlayerState()) {
+    androidEqualizer = AndroidEqualizer();
+    androidLoudnessEnhancer = AndroidLoudnessEnhancer();
+    _audioPlayer = AudioPlayer(
+      audioPipeline: AudioPipeline(
+        androidAudioEffects: [
+          androidEqualizer,
+          androidLoudnessEnhancer,
+        ],
+      ),
+    );
     _init();
   }
 
