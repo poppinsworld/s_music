@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
+import '../theme/app_colors.dart';
 import '../../shared/glass_container.dart';
 
 class SettingsScreen extends StatelessWidget {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'lyrics_provider.dart';
-import 'player_provider.dart';
+import '../player/player_provider.dart';
 
 class LyricsWidget extends ConsumerStatefulWidget {
   final Color glowColor;

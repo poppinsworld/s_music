@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../features/playlists/playlist_provider.dart';
-import '../theme/app_colors.dart';
+import '../features/theme/app_colors.dart';
 
 // ---------------------------------------------------------------------------
 // showAddToPlaylistSheet

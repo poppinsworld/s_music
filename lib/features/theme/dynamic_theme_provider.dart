@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import 'package:palette_generator/palette_generator.dart';
-import '../../theme/app_colors.dart';
-import 'player_provider.dart';
+import 'app_colors.dart';
+import '../player/player_provider.dart';
 
 // ---------------------------------------------------------------------------
 // DynamicThemeData — AMOLED-safe colors derived from album artwork

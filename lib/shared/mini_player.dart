@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../features/player/dynamic_theme_provider.dart';
+import '../features/theme/dynamic_theme_provider.dart';
 import '../features/player/player_provider.dart';
 import 'favorite_button.dart';
 import 'glass_container.dart';

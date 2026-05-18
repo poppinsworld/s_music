@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:on_audio_query/on_audio_query.dart';
-import '../../theme/app_colors.dart';
 import '../../shared/up_next_sheet.dart';
 import '../../shared/favorite_button.dart';
 import '../../shared/add_to_playlist_sheet.dart';
-import 'dynamic_theme_provider.dart';
+import '../theme/app_colors.dart';
+import '../theme/dynamic_theme_provider.dart';
+import '../lyrics/lyrics_widget.dart';
 import 'player_provider.dart';
-import 'lyrics_widget.dart';
 
 // ---------------------------------------------------------------------------
 // PlayerScreen — uses granular select() so position ticks do NOT rebuild

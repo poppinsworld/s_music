@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../shared/section_header.dart';
 import '../../shared/album_card.dart';
 import '../../shared/song_tile.dart';
-import '../../theme/app_colors.dart';
+import '../theme/app_colors.dart';
 import '../library/song_provider.dart';
 
 class HomeScreen extends ConsumerWidget {

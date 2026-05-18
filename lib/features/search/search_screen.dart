@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:on_audio_query/on_audio_query.dart';
 import '../../shared/song_tile.dart';
 import '../../shared/section_header.dart';
-import '../../theme/app_colors.dart';
+import '../theme/app_colors.dart';
 import '../library/song_provider.dart';
 import 'search_provider.dart';
 

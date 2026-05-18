@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../shared/song_tile.dart';
-import '../../theme/app_colors.dart';
+import '../theme/app_colors.dart';
 import '../library/song_provider.dart';
 import '../player/player_provider.dart';
 import 'favorites_provider.dart';

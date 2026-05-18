@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../theme/app_colors.dart';
+import '../features/theme/app_colors.dart';
 import 'mini_player.dart';
 
 class BottomNavShell extends StatelessWidget {
